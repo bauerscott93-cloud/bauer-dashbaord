@@ -52,6 +52,7 @@ export const BILL_ACTIONS = [
   { value: 'pay',                label: 'Pay',              column: 'Pay Now' },
   { value: 'wait_for_insurance', label: 'Wait (insurance)', column: 'Waiting' },
   { value: 'wait_for_eob',       label: 'Wait for EOB',     column: 'Waiting' },
+  { value: 'verify_paid',        label: 'Check if already paid', column: 'Waiting' },
   { value: 'call_provider',      label: 'Call provider',    column: 'Needs a Call' },
   { value: 'dispute',            label: 'Dispute',          column: 'Dispute' },
   { value: 'ignore',             label: 'Ignore',           column: 'Ignore' },

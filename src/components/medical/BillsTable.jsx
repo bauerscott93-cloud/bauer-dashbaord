@@ -3,7 +3,7 @@ import { cn } from '../../lib/cn.js'
 import { money } from '../../lib/format.js'
 import { formatDate, relativeDay, isBetween } from '../../lib/dates.js'
 import { BILL_ACTIONS } from '../../lib/constants.js'
-import { ActionBadge, FlagBadges } from './Badges.jsx'
+import { ActionBadge, FlagBadges, CollectionsBadge } from './Badges.jsx'
 import { EmptyState } from '../ui/States.jsx'
 
 const COLUMNS = [
@@ -179,7 +179,10 @@ export function BillsTable({ bills, providersById, patientsById, onOpen }) {
                     <span className="font-medium">
                       {providersById.get(bill.provider_id)?.name ?? '—'}
                     </span>
-                    <FlagBadges flags={bill.flags} className="mt-1" />
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      <CollectionsBadge bill={bill} />
+                      <FlagBadges flags={bill.flags} />
+                    </div>
                   </td>
                   <td className="px-3 py-2 text-slate-600 dark:text-slate-400">
                     {patientsById.get(bill.patient_id)?.full_name ?? '—'}

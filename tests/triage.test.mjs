@@ -1,4 +1,4 @@
-import { triageBills, summarize, findDuplicates } from '../src/lib/triage.js'
+import { triageBills, summarize, findDuplicates, columnForAction } from '../src/lib/triage.js'
 
 const today = new Date()
 const iso = (offset) => {
@@ -98,6 +98,14 @@ check('different dates are not duplicates',
 check('missing date of service never duplicates',
   findDuplicates([{ id: 'x', provider_id: 'p', date_of_service: null, amount_billed: 100 },
                   { id: 'y', provider_id: 'p', date_of_service: null, amount_billed: 100 }]).size, 0)
+
+console.log('\n--- verify_paid (bills that may already be paid) ---')
+check('verify_paid sits in the Waiting column', columnForAction('verify_paid'), 'waiting')
+const vp = one({ id: 'v1', amount_billed: 71.73, amount_paid: 0, insurance_status: 'processed',
+                 patient_responsibility_per_eob: 71.73, eob_received: true, action: 'verify_paid' })
+check('verify_paid overrides the pay suggestion', vp.effectiveAction, 'verify_paid')
+check('verify_paid counts as in limbo, not due now', summarize([vp]).inLimbo, 71.73)
+check('verify_paid is not counted as due now', summarize([vp]).dueNow, 0)
 
 console.log('\n--- summary bar ---')
 const s = summarize(t)

@@ -16,6 +16,7 @@ const ACTION_TONE = {
   dispute: 'violet',
   wait_for_eob: 'slate',
   wait_for_insurance: 'slate',
+  verify_paid: 'slate',
   ignore: 'slate',
   paid: 'emerald',
   resolved: 'emerald',
@@ -68,5 +69,16 @@ export function FlagBadges({ flags, className }) {
         <Badge key={label} tone={tone} title={title}>{label}</Badge>
       ))}
     </div>
+  )
+}
+
+/** Shown when the debt has left the provider and is with an agency. */
+export function CollectionsBadge({ bill }) {
+  if (!bill?.collector_name) return null
+  const ref = bill.collector_reference ? ` · ref ${bill.collector_reference}` : ''
+  return (
+    <Badge tone="rose" title={`${bill.collector_name}${ref}`}>
+      In collections
+    </Badge>
   )
 }

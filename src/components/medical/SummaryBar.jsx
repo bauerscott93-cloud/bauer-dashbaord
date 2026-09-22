@@ -94,18 +94,25 @@ export function SummaryBar({ summary, plans = [] }) {
               <p className="px-3 pt-2 text-xs font-medium text-slate-700 dark:text-slate-300">
                 {plan.name} · {plan.plan_year}
               </p>
-              <div className="grid gap-1 sm:grid-cols-2">
-                <Progress
-                  label="Deductible"
-                  met={plan.deductible_met}
-                  max={plan.deductible}
-                />
-                <Progress
-                  label="Out-of-pocket max"
-                  met={plan.out_of_pocket_met}
-                  max={plan.out_of_pocket_max}
-                />
-              </div>
+              {Number(plan.deductible ?? 0) > 0 || Number(plan.out_of_pocket_max ?? 0) > 0 ? (
+                <div className="grid gap-1 sm:grid-cols-2">
+                  <Progress
+                    label="Deductible"
+                    met={plan.deductible_met}
+                    max={plan.deductible}
+                  />
+                  <Progress
+                    label="Out-of-pocket max"
+                    met={plan.out_of_pocket_met}
+                    max={plan.out_of_pocket_max}
+                  />
+                </div>
+              ) : (
+                <p className="px-3 pb-2 pt-1 text-xs text-slate-500 dark:text-slate-400">
+                  No deductible or out-of-pocket figures yet — add them under Plans once the
+                  insurer confirms them, and the progress bars appear here.
+                </p>
+              )}
             </div>
           ))}
           <p className="px-4 py-2 text-xs text-slate-400 dark:text-slate-500">

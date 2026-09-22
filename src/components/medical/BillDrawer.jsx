@@ -7,7 +7,7 @@ import {
 } from '../../lib/constants.js'
 import { useBillActivity } from '../../hooks/useMedicalData.js'
 import { Button } from '../ui/Button.jsx'
-import { ActionBadge, FlagBadges, Badge } from './Badges.jsx'
+import { ActionBadge, FlagBadges, Badge, CollectionsBadge } from './Badges.jsx'
 
 function Field({ label, children }) {
   return (
@@ -247,6 +247,7 @@ export function BillDrawer({ bill, eobs, provider, patient, plan, allEobs, actio
 
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <ActionBadge action={bill.effectiveAction} suggested={!bill.action} />
+            <CollectionsBadge bill={bill} />
             <FlagBadges flags={bill.flags} />
             <span className="ml-auto text-lg font-semibold tabular-nums">{money(bill.balance)}</span>
           </div>
@@ -391,6 +392,8 @@ export function BillDrawer({ bill, eobs, provider, patient, plan, allEobs, actio
                 <Field label="Account ref">{bill.account_number_on_bill}</Field>
                 <Field label="Plan">{plan ? `${plan.name} · ${plan.plan_year}` : '—'}</Field>
                 <Field label="Follow up">{formatDate(bill.follow_up_date)}</Field>
+                <Field label="Collection agency">{bill.collector_name}</Field>
+                <Field label="Their reference">{bill.collector_reference}</Field>
                 <Field label="HSA/FSA eligible">{bill.hsa_fsa_eligible ? 'Yes' : 'No'}</Field>
                 <Field label="Reimbursement">
                   {REIMBURSEMENT_STATUSES.find((r) => r.value === bill.reimbursement_status)?.label}

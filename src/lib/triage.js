@@ -233,7 +233,7 @@ export function triageBills(bills, { providers = [], eobsByBillId = new Map() } 
 /** The six board columns, and which actions land in each. */
 export const TRIAGE_COLUMNS = [
   { key: 'pay',     title: 'Pay Now',      actions: ['pay'],                               tone: 'rose' },
-  { key: 'waiting', title: 'Waiting',      actions: ['wait_for_insurance', 'wait_for_eob'], tone: 'slate' },
+  { key: 'waiting', title: 'Waiting',      actions: ['wait_for_insurance', 'wait_for_eob', 'verify_paid'], tone: 'slate' },
   { key: 'call',    title: 'Needs a Call', actions: ['call_provider'],                      tone: 'amber' },
   { key: 'dispute', title: 'Dispute',      actions: ['dispute'],                            tone: 'violet' },
   { key: 'ignore',  title: 'Ignore',       actions: ['ignore'],                             tone: 'slate' },
@@ -281,6 +281,9 @@ export function summarize(triaged) {
         break
       case 'wait_for_eob':
       case 'wait_for_insurance':
+      // Money we may already have paid is just as much in limbo as money
+      // waiting on an insurer.
+      case 'verify_paid':
         totals.inLimbo += balance
         break
       case 'dispute':

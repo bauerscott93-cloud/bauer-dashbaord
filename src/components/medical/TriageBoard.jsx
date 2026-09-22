@@ -4,7 +4,7 @@ import { money } from '../../lib/format.js'
 import { formatDate, formatDateShort, relativeDay } from '../../lib/dates.js'
 import { TRIAGE_COLUMNS, COLUMN_DEFAULT_ACTION, columnForAction } from '../../lib/triage.js'
 import { BILL_ACTIONS } from '../../lib/constants.js'
-import { FlagBadges } from './Badges.jsx'
+import { FlagBadges, CollectionsBadge } from './Badges.jsx'
 
 function BillCard({ bill, providerName, patientName, onOpen, onMove, dragging, onDragStart, onDragEnd }) {
   return (
@@ -25,19 +25,20 @@ function BillCard({ bill, providerName, patientName, onOpen, onMove, dragging, o
         !bill.flags.overdue && bill.flags.urgent && 'border-l-4 border-l-amber-500',
       )}
     >
-      <div className="flex items-start justify-between gap-2">
-        {/* The provider name is how you recognise the bill — let it wrap to two
-            lines rather than truncating every name to "Scripp…". */}
-        <p className="min-w-0 flex-1 text-sm font-medium leading-snug [overflow-wrap:anywhere] line-clamp-2">
-          {providerName}
+      {/* The provider name is how you recognise the bill, and real ones are
+          long ("Valley Medical Group - Pediatric Specialty"), so it gets the
+          full width of the card and the amount drops to the line below. */}
+      <p className="text-sm font-medium leading-snug [overflow-wrap:anywhere] line-clamp-2">
+        {providerName}
+      </p>
+
+      <div className="mt-1 flex items-baseline justify-between gap-2">
+        <p className="min-w-0 truncate text-xs text-slate-500 dark:text-slate-400">
+          {patientName}
+          {bill.date_of_service && <> · {formatDateShort(bill.date_of_service)}</>}
         </p>
         <p className="shrink-0 text-sm font-semibold tabular-nums">{money(bill.balance)}</p>
       </div>
-
-      <p className="mt-1 text-xs leading-snug text-slate-500 dark:text-slate-400">
-        {patientName}
-        {bill.date_of_service && <> · {formatDateShort(bill.date_of_service)}</>}
-      </p>
 
       {bill.due_date && (
         <p
@@ -54,7 +55,10 @@ function BillCard({ bill, providerName, patientName, onOpen, onMove, dragging, o
         </p>
       )}
 
-      <FlagBadges flags={bill.flags} className="mt-2" />
+      <div className="mt-2 flex flex-wrap gap-1">
+        <CollectionsBadge bill={bill} />
+        <FlagBadges flags={bill.flags} />
+      </div>
 
       <p className="mt-2 line-clamp-2 text-xs text-slate-500 dark:text-slate-400">
         {bill.action_reason || bill.suggestion.reason}
