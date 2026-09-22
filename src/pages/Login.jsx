@@ -2,24 +2,34 @@ import { useState } from 'react'
 import { useAuth } from '../context/AuthProvider.jsx'
 import { Button } from '../components/ui/Button.jsx'
 
+/** Supabase's wording is for a login form with a username; ours has one box. */
+function friendlyError(message) {
+  if (/invalid login credentials/i.test(message)) return 'That password didn’t work.'
+  if (/email not confirmed/i.test(message)) {
+    return 'The household account isn’t confirmed yet. In Supabase → Authentication → Users, ' +
+           'open the account and confirm it.'
+  }
+  if (/rate|too many/i.test(message)) return 'Too many attempts. Wait a minute and try again.'
+  return message
+}
+
 export default function Login() {
-  const { signInWithEmail } = useAuth()
-  const [email, setEmail] = useState('')
-  const [status, setStatus] = useState('idle') // idle | sending | sent | error
+  const { signIn } = useAuth()
+  const [password, setPassword] = useState('')
+  const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
 
   async function onSubmit(event) {
     event.preventDefault()
-    if (!email.trim()) return
-    setStatus('sending')
+    if (!password) return
+    setBusy(true)
     setError(null)
-    const { error: signInError } = await signInWithEmail(email)
+    const { error: signInError } = await signIn(password)
     if (signInError) {
-      setError(signInError.message)
-      setStatus('error')
-    } else {
-      setStatus('sent')
+      setError(friendlyError(signInError.message))
+      setPassword('')
     }
+    setBusy(false)
   }
 
   return (
@@ -30,48 +40,27 @@ export default function Login() {
           The things that cost money or cause pain if missed.
         </p>
 
-        {status === 'sent' ? (
-          <div className="mt-6 rounded-lg bg-teal-50 p-4 text-sm text-teal-900 dark:bg-teal-950/60 dark:text-teal-200">
-            <p className="font-medium">Check your email</p>
-            <p className="mt-1 text-xs">
-              We sent a sign-in link to <span className="font-medium">{email}</span>. Open it on
-              this device. The link expires shortly.
-            </p>
-            <button
-              onClick={() => setStatus('idle')}
-              className="mt-3 text-xs font-medium underline"
-            >
-              Use a different email
-            </button>
+        <form onSubmit={onSubmit} className="mt-6 space-y-3">
+          <div>
+            <label htmlFor="password" className="hh-label">Password</label>
+            <input
+              id="password"
+              type="password"
+              required
+              autoFocus
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="hh-input mt-1"
+            />
           </div>
-        ) : (
-          <form onSubmit={onSubmit} className="mt-6 space-y-3">
-            <div>
-              <label htmlFor="email" className="hh-label">Email</label>
-              <input
-                id="email"
-                type="email"
-                required
-                autoFocus
-                autoComplete="email"
-                inputMode="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                className="hh-input mt-1"
-              />
-            </div>
-            <Button type="submit" disabled={status === 'sending'} className="w-full">
-              {status === 'sending' ? 'Sending…' : 'Email me a sign-in link'}
-            </Button>
-            {error && (
-              <p className="text-xs text-rose-600 dark:text-rose-400">{error}</p>
-            )}
-            <p className="text-center text-xs text-slate-400 dark:text-slate-500">
-              No passwords. We email you a one-time link.
-            </p>
-          </form>
-        )}
+          <Button type="submit" disabled={busy || !password} className="w-full">
+            {busy ? 'Signing in…' : 'Sign in'}
+          </Button>
+          {error && (
+            <p role="alert" className="text-xs text-rose-600 dark:text-rose-400">{error}</p>
+          )}
+        </form>
       </div>
     </div>
   )

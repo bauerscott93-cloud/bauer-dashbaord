@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react'
-import { supabase } from '../lib/supabase.js'
+import { supabase, HOUSEHOLD_EMAIL } from '../lib/supabase.js'
 import { useAuth } from '../context/AuthProvider.jsx'
 import { useHousehold } from '../context/HouseholdProvider.jsx'
-import { useInvites } from '../hooks/useInvites.js'
+import { useMembers } from '../hooks/useMembers.js'
 import { Card, CardHeader } from '../components/ui/Card.jsx'
 import { Button } from '../components/ui/Button.jsx'
 import { Spinner, ErrorState } from '../components/ui/States.jsx'
-import { formatDate } from '../lib/dates.js'
 
 function HouseholdSettings() {
   const { household, reload } = useHousehold()
@@ -45,7 +44,7 @@ function HouseholdSettings() {
 
   return (
     <Card>
-      <CardHeader title="Household" subtitle="Shared by everyone who signs in here." />
+      <CardHeader title="Household" />
       <form onSubmit={save} className="space-y-3 p-4">
         <div>
           <label htmlFor="hh-name" className="hh-label">Household name</label>
@@ -83,123 +82,219 @@ function HouseholdSettings() {
   )
 }
 
-function Members() {
-  const { members } = useHousehold()
-  const { user } = useAuth()
+function MemberRow({ member, onRename, onRemove }) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(member.display_name ?? '')
+  const [confirming, setConfirming] = useState(false)
+
+  async function commit(event) {
+    event.preventDefault()
+    if (draft.trim() && draft.trim() !== member.display_name) {
+      await onRename(member.id, draft)
+    }
+    setEditing(false)
+  }
 
   return (
-    <Card>
-      <CardHeader title="Household members" />
-      <ul className="divide-y divide-slate-200 dark:divide-slate-800">
-        {members.map((member) => (
-          <li key={member.id} className="flex items-center justify-between gap-3 px-4 py-3">
-            <div className="min-w-0">
-              <p className="truncate text-sm font-medium">
-                {member.display_name || member.email}
-                {member.user_id === user?.id && (
-                  <span className="ml-2 text-xs font-normal text-slate-400">you</span>
-                )}
-              </p>
-              <p className="truncate text-xs text-slate-500 dark:text-slate-400">{member.email}</p>
+    <li className="flex items-center justify-between gap-3 px-4 py-3">
+      {editing ? (
+        <form onSubmit={commit} className="flex flex-1 items-center gap-2">
+          <input
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            autoFocus
+            className="hh-input"
+          />
+          <Button type="submit" size="sm">Save</Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            onClick={() => {
+              setDraft(member.display_name ?? '')
+              setEditing(false)
+            }}
+          >
+            Cancel
+          </Button>
+        </form>
+      ) : (
+        <>
+          <p className="min-w-0 flex-1 truncate text-sm font-medium">
+            {member.display_name || '(unnamed)'}
+          </p>
+          {confirming ? (
+            <div className="flex shrink-0 items-center gap-2">
+              <span className="text-xs text-slate-500 dark:text-slate-400">Remove?</span>
+              <Button
+                size="sm"
+                variant="danger"
+                onClick={async () => {
+                  await onRemove(member.id)
+                  setConfirming(false)
+                }}
+              >
+                Remove
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setConfirming(false)}>
+                Cancel
+              </Button>
             </div>
-            <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-              {member.role}
-            </span>
-          </li>
-        ))}
-      </ul>
-    </Card>
+          ) : (
+            <div className="flex shrink-0 items-center gap-1">
+              <Button size="sm" variant="ghost" onClick={() => setEditing(true)}>Rename</Button>
+              <Button size="sm" variant="ghost" onClick={() => setConfirming(true)}>Remove</Button>
+            </div>
+          )}
+        </>
+      )}
+    </li>
   )
 }
 
-function InviteSpouse() {
-  const { householdId } = useHousehold()
-  const { invites, loading, error, invite, revoke } = useInvites(householdId)
-  const [email, setEmail] = useState('')
+function People() {
+  const { householdId, reload: reloadHousehold } = useHousehold()
+  const { members, loading, error, add, rename, remove } = useMembers(householdId)
   const [name, setName] = useState('')
   const [busy, setBusy] = useState(false)
   const [formError, setFormError] = useState(null)
 
-  async function onSubmit(event) {
-    event.preventDefault()
-    setBusy(true)
-    setFormError(null)
+  async function withRefresh(fn) {
     try {
-      await invite(email, name)
-      setEmail('')
-      setName('')
+      await fn()
+      reloadHousehold()
     } catch (err) {
       setFormError(err)
-    } finally {
-      setBusy(false)
     }
+  }
+
+  async function onAdd(event) {
+    event.preventDefault()
+    if (!name.trim()) return
+    setBusy(true)
+    setFormError(null)
+    await withRefresh(() => add(name))
+    setName('')
+    setBusy(false)
   }
 
   return (
     <Card>
       <CardHeader
-        title="Invite someone to this household"
-        subtitle="They sign in with the same magic-link flow and land in this household."
+        title="People"
+        subtitle="Who an item can be assigned to. These aren’t separate logins."
+      />
+      {loading ? (
+        <Spinner label="Loading people…" />
+      ) : (
+        <ul className="divide-y divide-slate-200 dark:divide-slate-800">
+          {members.map((member) => (
+            <MemberRow
+              key={member.id}
+              member={member}
+              onRename={(id, value) => withRefresh(() => rename(id, value))}
+              onRemove={(id) => withRefresh(() => remove(id))}
+            />
+          ))}
+        </ul>
+      )}
+      <form onSubmit={onAdd} className="flex items-end gap-2 border-t border-slate-200 p-4 dark:border-slate-800">
+        <div className="flex-1">
+          <label htmlFor="member-name" className="hh-label">Add a person</label>
+          <input
+            id="member-name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Name"
+            className="hh-input mt-1"
+          />
+        </div>
+        <Button type="submit" disabled={busy || !name.trim()}>Add</Button>
+      </form>
+      {(formError || error) && (
+        <div className="px-4 pb-4"><ErrorState error={formError || error} /></div>
+      )}
+    </Card>
+  )
+}
+
+function SharedPassword() {
+  const { changePassword } = useAuth()
+  const [next, setNext] = useState('')
+  const [confirm, setConfirm] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [done, setDone] = useState(false)
+  const [error, setError] = useState(null)
+
+  async function onSubmit(event) {
+    event.preventDefault()
+    if (next !== confirm) {
+      setError('The two passwords don’t match.')
+      return
+    }
+    if (next.length < 10) {
+      setError('Use at least 10 characters.')
+      return
+    }
+    setBusy(true)
+    setError(null)
+    const { error: updateError } = await changePassword(next)
+    setBusy(false)
+    if (updateError) {
+      setError(updateError.message)
+      return
+    }
+    setNext('')
+    setConfirm('')
+    setDone(true)
+    setTimeout(() => setDone(false), 4000)
+  }
+
+  return (
+    <Card>
+      <CardHeader
+        title="Shared password"
+        subtitle={`Everyone signs in to ${HOUSEHOLD_EMAIL} with this password.`}
       />
       <form onSubmit={onSubmit} className="space-y-3 p-4">
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
-            <label htmlFor="invite-email" className="hh-label">Email</label>
+            <label htmlFor="pw-new" className="hh-label">New password</label>
             <input
-              id="invite-email"
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="spouse@example.com"
+              id="pw-new"
+              type="password"
+              autoComplete="new-password"
+              value={next}
+              onChange={(e) => setNext(e.target.value)}
               className="hh-input mt-1"
             />
           </div>
           <div>
-            <label htmlFor="invite-name" className="hh-label">Name (optional)</label>
+            <label htmlFor="pw-confirm" className="hh-label">Confirm</label>
             <input
-              id="invite-name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+              id="pw-confirm"
+              type="password"
+              autoComplete="new-password"
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
               className="hh-input mt-1"
             />
           </div>
         </div>
-        {formError && (
-          <p className="text-xs text-rose-600 dark:text-rose-400">{formError.message}</p>
+        {error && <p className="text-xs text-rose-600 dark:text-rose-400">{error}</p>}
+        {done && (
+          <p className="text-xs text-teal-600 dark:text-teal-400">
+            Changed. Anyone already signed in on another device will be asked for it again.
+          </p>
         )}
-        <Button type="submit" disabled={busy}>{busy ? 'Inviting…' : 'Invite'}</Button>
+        <Button type="submit" disabled={busy || !next}>
+          {busy ? 'Changing…' : 'Change password'}
+        </Button>
         <p className="text-xs text-slate-500 dark:text-slate-400">
-          No email is sent from here — tell them to sign in at this URL with that address and
-          they’ll join automatically.
+          There’s no email on this account, so there’s no “forgot password” link. If it’s lost,
+          reset it in Supabase → Authentication → Users.
         </p>
       </form>
-
-      {loading ? (
-        <Spinner label="Loading invites…" />
-      ) : invites.length > 0 ? (
-        <div className="border-t border-slate-200 dark:border-slate-800">
-          <p className="px-4 pt-3 text-xs font-medium uppercase tracking-wide text-slate-400">
-            Pending
-          </p>
-          <ul className="divide-y divide-slate-200 dark:divide-slate-800">
-            {invites.map((row) => (
-              <li key={row.id} className="flex items-center justify-between gap-3 px-4 py-3">
-                <div className="min-w-0">
-                  <p className="truncate text-sm">{row.email}</p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Invited {formatDate(row.created_at?.slice(0, 10))}
-                  </p>
-                </div>
-                <Button variant="ghost" size="sm" onClick={() => revoke(row.id)}>
-                  Revoke
-                </Button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
-      {error && <div className="p-4"><ErrorState error={error} /></div>}
     </Card>
   )
 }
@@ -209,8 +304,8 @@ export default function Settings() {
     <div className="space-y-4">
       <h1 className="text-xl font-semibold">Settings</h1>
       <HouseholdSettings />
-      <Members />
-      <InviteSpouse />
+      <People />
+      <SharedPassword />
       <Card className="p-4">
         <p className="text-xs font-medium uppercase tracking-wide text-slate-400 dark:text-slate-500">
           Arriving in build phase 4

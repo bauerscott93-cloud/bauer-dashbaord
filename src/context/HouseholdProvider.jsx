@@ -5,9 +5,9 @@ import { useAuth } from './AuthProvider.jsx'
 const HouseholdContext = createContext(null)
 
 /**
- * Resolves the signed-in user to exactly one household. On a first sign-in the
- * bootstrap_household() RPC either joins the household that invited this email
- * or creates a new one and fills it with the starter items.
+ * Resolves the shared account to its household. On a first sign-in the
+ * bootstrap_household() RPC creates the household, links this login to it,
+ * and fills it with the starter items.
  */
 export function HouseholdProvider({ children }) {
   const { user } = useAuth()
@@ -59,16 +59,8 @@ export function HouseholdProvider({ children }) {
   }, [load])
 
   const value = useMemo(
-    () => ({
-      householdId,
-      household,
-      members,
-      loading,
-      error,
-      reload: load,
-      currentMember: members.find((m) => m.user_id === user?.id) ?? null,
-    }),
-    [householdId, household, members, loading, error, load, user],
+    () => ({ householdId, household, members, loading, error, reload: load }),
+    [householdId, household, members, loading, error, load],
   )
 
   return <HouseholdContext.Provider value={value}>{children}</HouseholdContext.Provider>

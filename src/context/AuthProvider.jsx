@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
-import { supabase, isSupabaseConfigured } from '../lib/supabase.js'
+import { supabase, isSupabaseConfigured, HOUSEHOLD_EMAIL } from '../lib/supabase.js'
 
 const AuthContext = createContext(null)
 
@@ -33,12 +33,11 @@ export function AuthProvider({ children }) {
       session,
       user: session?.user ?? null,
       loading,
-      /** Magic link only — there are no passwords in this app. */
-      signInWithEmail: (email) =>
-        supabase.auth.signInWithOtp({
-          email: email.trim(),
-          options: { emailRedirectTo: window.location.origin },
-        }),
+      /** One shared password. The account identifier comes from the env var. */
+      signIn: (password) =>
+        supabase.auth.signInWithPassword({ email: HOUSEHOLD_EMAIL, password }),
+      /** Changing it signs the other device out on its next token refresh. */
+      changePassword: (password) => supabase.auth.updateUser({ password }),
       signOut: () => supabase.auth.signOut(),
     }),
     [session, loading],
